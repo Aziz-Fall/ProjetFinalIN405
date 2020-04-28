@@ -26,7 +26,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Too much d'argument :|\n");
         exit(EXIT_FAILURE);
     }
-    FILE *f = fopen(argv[1], "r");
+    FILE *f = fopen("data", "r");
     if( !f )
     {
         perror("fopen()");
@@ -45,11 +45,10 @@ int main(int argc, char **argv)
     }
 
     com.nb_child_thread = tab[3];
-
-    pthread_t thread_p, thread_c[tab[3]];
+    com.child           = malloc(sizeof(pthread_t) * tab[3]);
 
     Data_parent data_parent = init_data_parent(tab[4], tab[2], tab[3], tab[1]);
-    pthread_create(&thread_p, NULL, parent_thread, &data_parent);
+    pthread_create(&com.parent, NULL, parent_thread, &data_parent);
     
     Data_child data_child[com.nb_child_thread]; 
     printf("Nb thread: %d\n", com.nb_child_thread);
@@ -57,33 +56,57 @@ int main(int argc, char **argv)
     for( int i = 0; i < com.nb_child_thread; i++ )
     {
         data_child[i] = init_data_child(tab[4], tab[2], i);
-        pthread_create(thread_c + i, NULL, child_thread, &data_child[i]);
+        pthread_create(com.child + i, NULL, child_thread, &data_child[i]);
         printf("i,%d\n", i);
     }
     
     for( int i = 0; i < com.nb_child_thread; i++ )
-        pthread_join(thread_c[i], NULL);
+        pthread_join(com.child[i], NULL);
     
-    pthread_join(thread_p, NULL);
+    pthread_join(com.parent, NULL);
     fclose(f);
+    free(com.child);
     return EXIT_SUCCESS;
 }
 
 void *child_thread(void *arg)
-{
+{   
     Data_child *d = (Data_child*) arg;
+    for( int i = 0; i < 10; i++ )
+    {
+        sleep(1);  
+        pthread_mutex_lock(&com.mutex_com);
+        int id_page = (rand() % d->nb_pages);
 
-    printf("thread: %d\n", d->id_pthread);
+        printf("Child id page: %d\n", id_page);
 
+        Address a = init_address(id_page, d->id_pthread);
+
+        write(com.pipe_child[1], &a, sizeof(Address));
+        close(com.pipe_child[1]);
+
+        printf("Child, message sended...\n");
+        
+        pthread_cond_signal(&com.cond_parent);
+        pthread_cond_wait(&com.cond_child, &com.mutex_com);
+
+        int response = 0;
+        read(com.pipe_parent[0], &response, sizeof(int));
+
+        close(com.pipe_parent[0]);
+        
+        printf("Child receive: [ %d -> response: %d]\n", d->id_pthread, response);
+        pthread_mutex_unlock(&com.mutex_com);
+    }
     pthread_exit(NULL);
 }
 
 void *parent_thread(void *arg)
-{
+{   
     Data_parent *d = (Data_parent*) arg;
-    printf("nb page: %d\n", d->nb_pages);
-    int *t_hit   = malloc( sizeof(int) * d->nb_pthread );
-    Page *t_page = malloc( sizeof(Page) * d->nb_pages );
+    //printf("nb page: %d\n", d->nb_pages);
+    int *t_hit     = malloc( sizeof(int) * d->nb_pthread );
+    Page *t_page   = malloc( sizeof(Page) * d->nb_pages );
     
     //Intialize array page and array hit
     for( int i = 0; i < d->nb_pages; i++ )
@@ -92,9 +115,38 @@ void *parent_thread(void *arg)
 
         t_page[i] = create_page(d->size_page, i);
     }
+    int i = 0, a = 1;
+    while (a)
+    {
+        pthread_mutex_lock(&com.mutex_com);
 
-    int nb_demandes = d->nb_pthread * d->nb_access;
-    printf("Demande: %d\n", nb_demandes);
+        //printf("Parent wait for message....\n");
+
+        pthread_cond_wait(&com.cond_parent, &com.mutex_com);
+
+        //printf("In parent after wait....\n");
+        Address *addr = malloc(sizeof(Address));//get_request(com.pipe_child);
+        addr->id_page = -1;
+        addr->id_pthread = -1;
+        if( read(com.pipe_child[0], addr, sizeof(Address)) < 0);
+        close(com.pipe_child[0]);
+        //printf("In Parent -> child: [id: %d - page: %d]\n", addr->id_pthread, addr->id_page);
+        //set_response(addr->id_page, com.pipe_parent);
+        if( write(com.pipe_parent[1], &(addr->id_page), sizeof(int)) < 0 );
+        close(com.pipe_parent[1]);
+        int nb_demandes = d->nb_pthread * d->nb_access;
+        printf("I: %d\n", i);
+        ++i;
+        if( i == 100 ) a = 0;
+        //free(addr);
+        pthread_cond_signal(&com.cond_child);
+        pthread_mutex_unlock(&com.mutex_com);
+
+       // printf("Demande: %d\n", nb_demandes);
+       free(addr);
+    }
+    
+
     free(t_hit);
     free(t_page);
     pthread_exit(NULL);

@@ -26,6 +26,8 @@ typedef struct communication
     int nb_child_thread;
     int pipe_child[2];
     int pipe_parent[2];
+    pthread_t parent;
+    pthread_t *child;
     pthread_mutex_t mutex_com;
     pthread_cond_t cond_parent;
     pthread_cond_t cond_child;
@@ -75,29 +77,29 @@ Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size);
 /**
  * Set a request to the parent thread
  * @param addresse      physical address 
- * @param pipe[]     the pipe communication    
+ * @param pipes[]     the pipe communication    
  */
-void set_request(Address *address, int pipe[]);
+void set_request(Address *address, int pipes[]);
 
 /**
  * Recover the request 
- * @param pipe[] the pipe communication
+ * @param pipes[] the pipe communication
  * @return          the phisical address
  */
-Address *get_request(int pipe[]);
+Address *get_request(int pipes[]);
 
 /**
  * Set a response to the child thread
  * @param logic_address logic address
- * @param pipe[]     the pipe communication
+ * @param pipes[]     the pipe communication
  */
-void set_response(int logic_address, int pipe[]);
+void set_response(int logic_address, int pipes[]);
 
 /**
  * Recover the response
- * @param pipe[] the pipe communication
+ * @param pipes[] the pipe communication
  * @return          the logic address
  */
-int get_response(int pipe[]);
+int get_response(int pipes[]);
 
 #endif

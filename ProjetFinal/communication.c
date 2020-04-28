@@ -1,51 +1,49 @@
 #include "communication.h"
 
-void set_request(Address *address, int pipe[])
+void set_request(Address *address, int pipes[])
 {
-    close(pipe[0]);
-    if( write(pipe[1], address, sizeof(struct address)) < 0 )
+    
+    if( write(pipes[1], address, sizeof(Address)) < 0 )
     {
         perror("In set_request() -> write()");
         return;
     }
-    close(pipe[1]);
+    close(pipes[1]);
 }
 
-Address *get_request(int pipe[])
+Address *get_request(int pipes[])
 {
     static Address ad;
-    close(pipe[1]);
-    if( read(pipe[0], &ad, sizeof(struct address)) < 0 )
+    
+    if( read(pipes[0], &ad, sizeof(struct address)) < 0 )
     {
         perror("In set_request() -> write()");
         return NULL;
     }
-    close(pipe[0]);
+    close(pipes[0]);
 
     return &ad;
 }
 
-void set_response(int logic_address, int pipe[])
+void set_response(int logic_address, int pipes[])
 {
-    close(pipe[0]);
-    if( write(pipe[1], &logic_address, sizeof(int)) < 0 )
+    if( write(pipes[1], &logic_address, sizeof(int)) < 0 )
     {
         perror("In set_response() -> write()");
         return;
     }
-    close(pipe[1]);
+    close(pipes[1]);
 }
 
-int get_response(int pipe[])
+int get_response(int pipes[])
 {
     int response = 0;
-    close(pipe[1]);
-    if( read(pipe[0], &response, sizeof(int)) < 0 )
+    if( read(pipes[0], &response, sizeof(int)) < 0 )
     {
         perror("In set_reponse() -> write()");
         return -1;
     }
-    close(pipe[0]);
+    close(pipes[0]);
 
     return response;
 }
