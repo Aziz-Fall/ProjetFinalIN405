@@ -1,5 +1,6 @@
 #include "communication.h"
 
+/*
 void set_request(Address *address, int pipes[])
 {
     
@@ -47,7 +48,7 @@ int get_response(int pipes[])
 
     return response;
 }
-
+*/
 Address init_address(int id_page, int id_pthread)
 {
     Address a;

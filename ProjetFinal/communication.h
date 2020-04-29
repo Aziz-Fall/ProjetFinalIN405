@@ -24,8 +24,8 @@
 typedef struct communication
 {
     int nb_child_thread;
-    int pipe_child[2];
-    int pipe_parent[2];
+    int fd1;
+    int fd2;
     pthread_t parent;
     pthread_t *child;
     pthread_mutex_t mutex_com;

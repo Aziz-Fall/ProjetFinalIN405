@@ -17,7 +17,6 @@ static Communication com = {
                             .cond_parent = PTHREAD_COND_INITIALIZER,
                             .cond_child  = PTHREAD_COND_INITIALIZER, 
                            };
-
 int main(int argc, char **argv)
 {
     srand(time(NULL));
@@ -38,14 +37,14 @@ int main(int argc, char **argv)
         perror("fscanf()");
         exit(EXIT_FAILURE);
     }
-    if( pipe(com.pipe_child) < 0 || pipe(com.pipe_parent) < 0 )
-    {
-        perror("pipe()");
-        exit(EXIT_FAILURE);
-    }
 
     com.nb_child_thread = tab[3];
     com.child           = malloc(sizeof(pthread_t) * tab[3]);
+
+    mkfifo("tube_in", 0666);
+    mkfifo("tube_out", 0666);
+    com.fd1 = open("tube_in", O_RDWR);
+    com.fd2 = open("tube_out", O_RDWR);
 
     Data_parent data_parent = init_data_parent(tab[4], tab[2], tab[3], tab[1]);
     pthread_create(&com.parent, NULL, parent_thread, &data_parent);
@@ -60,12 +59,15 @@ int main(int argc, char **argv)
         printf("i,%d\n", i);
     }
     
+    pthread_join(com.parent, NULL);
+
     for( int i = 0; i < com.nb_child_thread; i++ )
         pthread_join(com.child[i], NULL);
-    
-    pthread_join(com.parent, NULL);
+
     fclose(f);
     free(com.child);
+    unlink("tube_in");
+    unlink("tube_out");
     return EXIT_SUCCESS;
 }
 
@@ -73,32 +75,35 @@ void *child_thread(void *arg)
 {   
     Data_child *d = (Data_child*) arg;
     for( int i = 0; i < 10; i++ )
-    {
-        sleep(1);  
+    { 
+        sleep(1);
         pthread_mutex_lock(&com.mutex_com);
+
         int id_page = (rand() % d->nb_pages);
 
-        printf("Child id page: %d\n", id_page);
-
         Address a = init_address(id_page, d->id_pthread);
-
-        write(com.pipe_child[1], &a, sizeof(Address));
-        close(com.pipe_child[1]);
-
-        printf("Child, message sended...\n");
         
-        pthread_cond_signal(&com.cond_parent);
+        if( write(com.fd1, &a, sizeof(Address)) < 0 )
+        {
+            perror("In child write()");
+            return NULL;
+        }
+        printf("[Child id: %d , p: %d] message sended...\n", d->id_pthread, id_page);
+        
+        pthread_cond_signal(&com.cond_parent); 
         pthread_cond_wait(&com.cond_child, &com.mutex_com);
 
         int response = 0;
-        read(com.pipe_parent[0], &response, sizeof(int));
-
-        close(com.pipe_parent[0]);
         
-        printf("Child receive: [ %d -> response: %d]\n", d->id_pthread, response);
+        if ( read(com.fd2, &response, sizeof(int)) < 0 ) 
+        {
+            perror("In child read()");
+            return NULL;
+        }
         pthread_mutex_unlock(&com.mutex_com);
+        printf("[Child id: %d , p: %d] receive \n\n", d->id_pthread, response);
     }
-    pthread_exit(NULL);
+    return NULL;
 }
 
 void *parent_thread(void *arg)
@@ -115,8 +120,7 @@ void *parent_thread(void *arg)
 
         t_page[i] = create_page(d->size_page, i);
     }
-    int i = 0, a = 1;
-    while (a)
+    for(int i = 0; i < 100; i++ )
     {
         pthread_mutex_lock(&com.mutex_com);
 
@@ -125,29 +129,33 @@ void *parent_thread(void *arg)
         pthread_cond_wait(&com.cond_parent, &com.mutex_com);
 
         //printf("In parent after wait....\n");
-        Address *addr = malloc(sizeof(Address));//get_request(com.pipe_child);
-        addr->id_page = -1;
-        addr->id_pthread = -1;
-        if( read(com.pipe_child[0], addr, sizeof(Address)) < 0);
-        close(com.pipe_child[0]);
-        //printf("In Parent -> child: [id: %d - page: %d]\n", addr->id_pthread, addr->id_page);
-        //set_response(addr->id_page, com.pipe_parent);
-        if( write(com.pipe_parent[1], &(addr->id_page), sizeof(int)) < 0 );
-        close(com.pipe_parent[1]);
-        int nb_demandes = d->nb_pthread * d->nb_access;
+        Address addr ;
+        if( read(com.fd1, &addr, sizeof(Address)) < 0)
+        {
+            perror("In parent read()");
+            goto release;
+        }
+        //printf("child id: %d\n", addr.id_pthread);
+        //printf("In Parent -> child: [id: %d - page: %d]\n", addr.id_pthread, addr.id_page);
+
+        if( write(com.fd2, &(addr.id_page), sizeof(int)) < 0 )
+        {
+            perror("In parent write()");
+            goto release;
+        }   
+        //int nb_demandes = d->nb_pthread * d->nb_access;
         printf("I: %d\n", i);
-        ++i;
-        if( i == 100 ) a = 0;
-        //free(addr);
+
         pthread_cond_signal(&com.cond_child);
         pthread_mutex_unlock(&com.mutex_com);
 
        // printf("Demande: %d\n", nb_demandes);
-       free(addr);
     }
     
-
+    release:
+        free(t_hit);
+        free(t_page);
     free(t_hit);
     free(t_page);
-    pthread_exit(NULL);
+    return NULL;
 }
