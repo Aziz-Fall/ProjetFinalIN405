@@ -1,54 +1,49 @@
 #include "communication.h"
 
-/*
-void set_request(Address *address, int pipes[])
+
+void set_request(Address *address, int fd)
 {
-    
-    if( write(pipes[1], address, sizeof(Address)) < 0 )
+    if( write(fd, address, sizeof(Address)) < 0 )
     {
         perror("In set_request() -> write()");
         return;
     }
-    close(pipes[1]);
 }
 
-Address *get_request(int pipes[])
+Address *get_request(int fd)
 {
     static Address ad;
     
-    if( read(pipes[0], &ad, sizeof(struct address)) < 0 )
+    if( read(fd, &ad, sizeof(struct address)) < 0 )
     {
         perror("In set_request() -> write()");
         return NULL;
     }
-    close(pipes[0]);
-
+    
     return &ad;
 }
 
-void set_response(int logic_address, int pipes[])
+void set_response(int logic_address, int fd)
 {
-    if( write(pipes[1], &logic_address, sizeof(int)) < 0 )
+    if( write(fd, &logic_address, sizeof(int)) < 0 )
     {
         perror("In set_response() -> write()");
         return;
     }
-    close(pipes[1]);
 }
 
-int get_response(int pipes[])
+int get_response(int fd)
 {
     int response = 0;
-    if( read(pipes[0], &response, sizeof(int)) < 0 )
+    if( read(fd, &response, sizeof(int)) < 0 )
     {
         perror("In set_reponse() -> write()");
         return -1;
     }
-    close(pipes[0]);
 
     return response;
 }
-*/
+
 Address init_address(int id_page, int id_pthread)
 {
     Address a;
@@ -77,4 +72,30 @@ Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size)
     d.size_page  = size;
 
     return d;
+}
+
+void create_pipes()
+{
+    if( mkfifo("tube_in", 0666) < 0 || mkfifo("tube_out", 0666) < 0 )
+    {
+        perror("mkfifo()");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void open_pipes(Communication *com)
+{
+    com->fd1 = open("tube_in", O_RDWR);
+    com->fd2 = open("tube_out", O_RDWR);
+}
+void delete_pipe()
+{
+    unlink("tube_in");
+    unlink("tube_out");
+}
+
+void release_memory(Communication com)
+{   
+    if( com.child )
+        free(com.child);
 }

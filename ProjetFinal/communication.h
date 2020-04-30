@@ -15,8 +15,10 @@
  * This struct define the communication between
  * parent thread and thread son.
  * @param nb_child_thread nb child thread
- * @param pipe_parent the named pipe for communication
- * @param pipe_child the named pipe for communication
+ * @param fd1             file descriptor
+ * @param fd2             file descriptor
+ * @param parent          thread parent
+ * @param child           thread child
  * @param mutex_com       mutex of communication
  * @param cond_parent     condition parent
  * @param cond_son        condition son
@@ -34,13 +36,22 @@ typedef struct communication
 
 }Communication;
 
+/**
+ * This struct define an Address 
+ * @param id_page   id page
+ * @param id_thread id thread that send a demande
+ */
 typedef struct address
 {
     int id_page;
     int id_pthread;
 }Address;
 
-
+/**
+ * Create and Init an address
+ * @param id_page    id page
+ * @param id_pthread id thread
+ */
 Address init_address(int id_page, int id_pthread);
 
 /**
@@ -56,7 +67,14 @@ typedef struct data_child_thread
     int id_pthread;
 }Data_child;
 
+/**
+ * Create and init data child thread recover in the file config 
+ * @param nb_access  the number of access
+ * @param nb_pages   the number of page
+ * @param id_pthread id thread
+ */
 Data_child init_data_child(int nb_ac, int nb_p, int id_pthread);
+
 /**
  * This struct define the data recoved in the file config for parent thread
  * @param nb_access   the number of access of each child thread
@@ -72,34 +90,62 @@ typedef struct data_parent_thread
     int size_page;
 }Data_parent;
 
+/**
+ * Create and init data parent 
+ * @param nb_ac      number of access for each child thread
+ * @param nb_p       number of pages
+ * @param nb_pthread number of thread
+ * @param size       size page
+ */
 Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size);
 
 /**
  * Set a request to the parent thread
- * @param addresse      physical address 
- * @param pipes[]     the pipe communication    
+ * @param addresse physical address 
+ * @param fd       file descriptor    
  */
-void set_request(Address *address, int pipes[]);
+void set_request(Address *address, int fd);
 
 /**
  * Recover the request 
- * @param pipes[] the pipe communication
- * @return          the phisical address
+ * @param fd the pipe communication
+ * @return   the phisical address
  */
-Address *get_request(int pipes[]);
+Address *get_request(int fd);
 
 /**
  * Set a response to the child thread
  * @param logic_address logic address
- * @param pipes[]     the pipe communication
+ * @param fd            file descriptor
  */
-void set_response(int logic_address, int pipes[]);
+void set_response(int logic_address, int fd);
 
 /**
  * Recover the response
- * @param pipes[] the pipe communication
- * @return          the logic address
+ * @param fd the pipe communication
+ * @return   the logic address
  */
-int get_response(int pipes[]);
+int get_response(int fd);
+
+/**
+ * Create all pipes for the comminucation.
+ */
+void create_pipes();
+
+/**
+ * Open pipe's commnunication.
+ * @param com Communication
+ */
+void open_pipes(Communication *com);
+/**
+ * Delete pipe communication
+ */
+void delete_pipe();
+
+/**
+ * Release the memory allocated
+ * @param com Communication
+ */
+void release_memory(Communication com);
 
 #endif
