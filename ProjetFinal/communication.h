@@ -31,9 +31,6 @@ typedef struct communication
     pthread_t parent;
     pthread_t *child;
     pthread_mutex_t mutex_com;
-    pthread_cond_t cond_parent;
-    pthread_cond_t cond_child;
-
 }Communication;
 
 /**
@@ -81,6 +78,7 @@ Data_child init_data_child(int nb_ac, int nb_p, int id_pthread);
  * @param nb_pages    the number of pages 
  * @param nb_pthreads the number of threads
  * @param size_page   the page size
+ * @param nb_frames  the number of frames. 
  */
 typedef struct data_parent_thread
 {
@@ -88,6 +86,7 @@ typedef struct data_parent_thread
     int nb_pages;
     int nb_pthread;
     int size_page;
+    int nb_frames;
 }Data_parent;
 
 /**
@@ -96,8 +95,9 @@ typedef struct data_parent_thread
  * @param nb_p       number of pages
  * @param nb_pthread number of thread
  * @param size       size page
+ * @param nb_f       number of frame
  */
-Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size);
+Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size, int nb_f);
 
 /**
  * Set a request to the parent thread

@@ -3,6 +3,7 @@
 void _do_LRU_algorithm(Frame *f)
 {
     Page p = get_least_recent_page(&(f->l));
+    printf("*****Page least recent: %d\n", p.id);
 
     for( int i = 0; i < f->size; i++ )
         if( f->t_frame[i].id == p.id )
@@ -55,17 +56,19 @@ Frame load_page(Frame f, Page p)
     if( f.number_pages_occupated < f.size )
         free_index = _get_free_page(f);
     else // if frame is full : do LRU algorithm
-    {
+    {   
+        printf(".....Do algorithme....\n");
         _do_LRU_algorithm(&f);
+        printf(".....Fin algorithme....\n");
         free_index = _get_free_page(f);
     }
 
     printf("**index : %d\n", free_index);
     // add page in the frame.
+    f.number_pages_occupated += 1;
     f.t_frame[free_index] = p;
     f.l                   = add(f.l, p);
-    ++f.number_pages_occupated;
-    
+    printf("------>Nuber of page: %d\n", f.number_pages_occupated);
     return f;
 }
 

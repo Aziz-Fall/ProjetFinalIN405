@@ -23,9 +23,7 @@ void *parent_thread(void *arg);
 int *recover_data(int argc, char **argv);
 
 static Communication com = {
-                            .mutex_com   = PTHREAD_MUTEX_INITIALIZER,
-                            .cond_parent = PTHREAD_COND_INITIALIZER,
-                            .cond_child  = PTHREAD_COND_INITIALIZER, 
+                            .mutex_com   = PTHREAD_MUTEX_INITIALIZER, 
                            };
 
                            
@@ -40,7 +38,7 @@ int main(int argc, char **argv)
 
     create_pipes();
 
-    Data_parent data_parent = init_data_parent(tab[4], tab[2], tab[3], tab[1]);
+    Data_parent data_parent = init_data_parent(tab[4], tab[2], tab[3], tab[1], tab[0]);
     Data_child data_child[com.nb_child_thread]; 
 
     open_pipes(&com);
@@ -63,6 +61,10 @@ int main(int argc, char **argv)
         
     delete_pipe();
     release_memory(com);
+    /*Frame f = create_frame(4);
+    Page p[10];
+    for( int i = 0; i < 10; i++)
+        p[i] = create_page(i*5, i);*/
     return EXIT_SUCCESS;
 }
 
@@ -94,7 +96,8 @@ void *parent_thread(void *arg)
     int nb_demande = d->nb_access * d->nb_pthread;
     int *t_hit     = malloc( sizeof(int) * d->nb_pthread );
     Page *t_page   = malloc( sizeof(Page) * d->nb_pages );
-    
+    Frame frame    = create_frame(d->nb_frames);
+
     //Intialize array page and array hit
     for( int i = 0; i < d->nb_pages; i++ )
     {   
@@ -102,15 +105,32 @@ void *parent_thread(void *arg)
 
         t_page[i] = create_page(d->size_page, i);
     }
+
     for( int i = 0; i < nb_demande; i++ )
     {
         //printf("I: %d\n", i);
+
         Address *addr = get_request(com.fd1);
+
+        if( is_in_frame(frame, t_page[addr->id_page]) )
+        {
+            printf(" is in frame: ....\n");
+            t_hit[addr->id_pthread] += 1; 
+            frame = update_pages_list(frame, t_page[addr->id_page]);
+        }
+        else
+        {   
+            frame = load_page(frame, t_page[addr->id_page]);
+        }
         set_response(addr->id_page, com.fd2);
     }
 
+    for( int i = 0; i < d->nb_pthread; i++ )
+        printf("[thread %d -> %d hits]\n", i,  t_hit[i]);
+    
     free(t_hit);
     free(t_page);
+    free_frame(frame);
     printf("fin\n");
     printf("nb page: %d, demande: %d\n", d->nb_pages, nb_demande);
     pthread_exit(NULL);

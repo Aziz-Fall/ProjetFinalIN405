@@ -63,13 +63,14 @@ Data_child init_data_child(int nb_ac, int nb_p, int id_pthread)
     return d;
 }
 
-Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size)
+Data_parent init_data_parent(int nb_ac, int nb_p, int nb_pthread, int size, int nb_f)
 {
     Data_parent d;
     d.nb_access  = nb_ac;
     d.nb_pages   = nb_p;
     d.nb_pthread = nb_pthread;
     d.size_page  = size;
+    d.nb_frames  = nb_f;
 
     return d;
 }
