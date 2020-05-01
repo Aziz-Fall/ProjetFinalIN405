@@ -61,6 +61,7 @@ bool is_in_pages_list(Pages_list l, Page p)
 
     return is_in_pages_list(l->next, p);
 }
+
 void print_content_pages_list(Pages_list l)
 {
     if( !l ) return;
@@ -92,8 +93,6 @@ void pop_page(Pages_list *l, Page p)
 
     if( !(*l)->next ) //fin de list
     {
-        printf(" 1 \n");
-
         if( prev_element )
             prev_element->next = NULL;
         else 

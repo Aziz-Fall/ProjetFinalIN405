@@ -11,9 +11,9 @@ void *child_thread(void *arg);
 
 /**
  * Manage the parent thread communication
- * @param arg the data
+ * @param d the data that thread parent need to work.
  */
-void *parent_thread(void *arg);
+void parent(Data_parent d);
 
 /**
  * Recover the data in the file config.
@@ -43,28 +43,22 @@ int main(int argc, char **argv)
 
     open_pipes(&com);
 
-    printf("Nb thread: %d\n", com.nb_child_thread);
-
-    pthread_create(&com.parent, NULL, parent_thread, &data_parent);
-
+    //Création de thread fils
     for( int i = 0; i < com.nb_child_thread; i++ )
     {
         data_child[i] = init_data_child(tab[4], tab[2], i);
         pthread_create(com.child + i, NULL, child_thread, &data_child[i]);
-        printf("i,%d\n", i);
     }
 
-    pthread_join(com.parent, NULL);
+    //Parent
+    parent(data_parent);
 
     for( int i = 0; i < com.nb_child_thread; i++ )
         pthread_join(com.child[i], NULL);
         
     delete_pipe();
     release_memory(com);
-    /*Frame f = create_frame(4);
-    Page p[10];
-    for( int i = 0; i < 10; i++)
-        p[i] = create_page(i*5, i);*/
+
     return EXIT_SUCCESS;
 }
 
@@ -79,61 +73,62 @@ void *child_thread(void *arg)
 
         pthread_mutex_lock(&com.mutex_com);
 
+        //Demande accéss à la mémoire
         set_request(&a, com.fd1);
 
         pthread_mutex_unlock(&com.mutex_com);
 
+        //Réponse du thread parent.
         int response = get_response(com.fd2);
-        printf("[Thread id: %d , response: %d] receive \n\n", d->id_pthread, response);
+        printf("[Thread id: %d , receive response: %d]\n", d->id_pthread, response);
     }
-    printf("Nb_access: %d\n", d->nb_access);
+
     pthread_exit(NULL);
 }
 
-void *parent_thread(void *arg)
-{   
-    Data_parent *d = (Data_parent*) arg;
-    int nb_demande = d->nb_access * d->nb_pthread;
-    int *t_hit     = malloc( sizeof(int) * d->nb_pthread );
-    Page *t_page   = malloc( sizeof(Page) * d->nb_pages );
-    Frame frame    = create_frame(d->nb_frames);
+void parent(Data_parent d)
+{
+    int nb_demande = d.nb_access * d.nb_pthread;
+    int *t_hit     = malloc( sizeof(int) * d.nb_pthread );
+    Page *t_page   = malloc( sizeof(Page) * d.nb_pages );
+    Frame frame    = create_frame(d.nb_frames);
 
-    //Intialize array page and array hit
-    for( int i = 0; i < d->nb_pages; i++ )
+    //Intialisation des pages et du tableau de hit (t_hit)
+    for( int i = 0; i < d.nb_pages; i++ )
     {   
-        if( i < d->nb_pthread ) t_hit[i] = 0;
+        if( i < d.nb_pthread ) t_hit[i] = 0;
 
-        t_page[i] = create_page(d->size_page, i);
+        t_page[i] = create_page(d.size_page, i);
     }
 
     for( int i = 0; i < nb_demande; i++ )
-    {
-        //printf("I: %d\n", i);
-
+    {   
+        //Récuperation d'une requête
         Address *addr = get_request(com.fd1);
-
+        
+        //Vérification du page en mémoire rapide
         if( is_in_frame(frame, t_page[addr->id_page]) )
         {
-            printf(" is in frame: ....\n");
             t_hit[addr->id_pthread] += 1; 
             frame = update_pages_list(frame, t_page[addr->id_page]);
         }
-        else
+        else //Chargement du page en mémoire rapide avec l'argorithme LRU
         {   
             frame = load_page(frame, t_page[addr->id_page]);
         }
+        //Réponse de la démande d'acces à la mémoire.
         set_response(addr->id_page, com.fd2);
     }
 
-    for( int i = 0; i < d->nb_pthread; i++ )
+    //Affichage des pourcentages de hits
+    for( int i = 0; i < d.nb_pthread; i++ )
         printf("[thread %d -> %d hits]\n", i,  t_hit[i]);
     
     free(t_hit);
     free(t_page);
     free_frame(frame);
-    printf("fin\n");
-    printf("nb page: %d, demande: %d\n", d->nb_pages, nb_demande);
-    pthread_exit(NULL);
+
+    printf("nb page: %d, demande: %d\n", d.nb_pages, nb_demande);
 }
 
 int *recover_data(int argc, char **argv)

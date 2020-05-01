@@ -5,9 +5,10 @@
 #define FREE_PAGE -1
 /**
  * This struct represent quick memory
- * @param size    number elements
- * @param t_frame pages array
- * @param l       linked list that manage the least recent page
+ * @param size                   number elements
+ * @param number_pages_occupated number of pages occupated
+ * @param t_frame                pages array
+ * @param l                      linked list that manage the least recent page
  */
 typedef struct frame
 {

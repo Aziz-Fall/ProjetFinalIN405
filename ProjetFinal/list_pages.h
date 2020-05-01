@@ -74,10 +74,6 @@ void print_content_pages_list(Pages_list l);
 void print_page(Page p);
 
 /**
- * Initialize a memory page
- */
-
-/**
  * Create an empty memory page 
  * @param size the size of the memory page
  * @param id   the page's id

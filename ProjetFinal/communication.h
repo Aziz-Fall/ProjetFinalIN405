@@ -17,7 +17,6 @@
  * @param nb_child_thread nb child thread
  * @param fd1             file descriptor
  * @param fd2             file descriptor
- * @param parent          thread parent
  * @param child           thread child
  * @param mutex_com       mutex of communication
  * @param cond_parent     condition parent
@@ -28,7 +27,6 @@ typedef struct communication
     int nb_child_thread;
     int fd1;
     int fd2;
-    pthread_t parent;
     pthread_t *child;
     pthread_mutex_t mutex_com;
 }Communication;
